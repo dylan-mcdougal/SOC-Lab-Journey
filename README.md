@@ -1,31 +1,45 @@
-# SOC Lab Journey — Dylan McDougal
+# SOC Lab Journey
 
-## About This Repository
-This repository documents my hands-on cybersecurity lab work as I build toward 
-CompTIA Network+, Security+, and an entry-level SOC analyst role. Each lab includes 
-objectives, tools used, key findings, and takeaways written in my own words.
+A hands-on cybersecurity lab portfolio documenting my progression toward a SOC analyst / blue team role.
 
-## Background
-- IT Helpdesk Technician at Wayland Baptist University
-- MBA | Cybersecurity Specialization — Wayland Baptist University (Expected May 2026)
-- BBA | Cybersecurity Specialization — December 2024
-- Building toward: CompTIA Network+ (June 2026) → Security+ (September 2026) → SOC Analyst
+**Dylan McDougal** | MBA Cybersecurity | CompTIA Network+ (target June 2026) | Security+ (target September 2026)
 
-## Lab Environment
-- Ubuntu 24.04 LTS VM — Oracle VirtualBox
-- Windows 11 Enterprise VM — Oracle VirtualBox
-- Cisco Packet Tracer — network simulation
-- Wireshark — packet capture and analysis
+---
+
+## About This Repo
+
+This repository tracks real lab work — not just notes. Each entry includes objectives, commands used, findings, and what I learned. The goal is to build practical skills and document them in a way that reflects how a SOC analyst thinks.
+
+---
 
 ## Completed Labs
-| Lab | Topic | Date |
-|-----|-------|------|
-| [Lab 01 — Wireshark Network Traffic Analysis](Wireshark_Lab_Summary.docx) | DNS, ICMP, TCP Handshake, HTTPS/TLS | March 2026 |
 
-## In Progress
-- Network+ N10-009 Study Plan
-- OSI Model deep dive
-- Subnetting fundamentals
+| # | Lab | Topics Covered | Date | Write-up |
+|---|-----|---------------|------|----------|
+| 01 | VirtualBox NAT and Bridged Networking | NAT vs Bridged adapter modes, IP addressing, directional ping behavior, MAC addresses, network isolation | March 2026 | [View](labs/Lab-01-VirtualBox-NAT-and-Bridged-Networking/README.md) |
+| 02 | VirtualBox NAT and Packet Flow | ARP, default routing, traceroute visibility, netstat, PID/service mapping, NAT/PAT translation | April 2026 | [View](labs/Lab-02-NAT-and-Packet-Flow/README.md) |
 
-## Connect
-- LinkedIn: linkedin.com/in/dylan-mcdougal-9327752a1
+---
+
+## Wireshark Lab
+
+[Wireshark Lab Summary](Wireshark_Lab_Summary.docx) — packet capture analysis including DNS, TCP handshake, and HTTPS traffic observation.
+
+---
+
+## Certifications In Progress
+
+| Certification | Target Date | Status |
+|--------------|------------|--------|
+| CompTIA Network+ (N10-009) | June 2026 | 🔄 Studying |
+| CompTIA Security+ | September 2026 | ⏳ Pending |
+
+---
+
+## Tools Used
+
+- Oracle VirtualBox
+- Ubuntu 24.04 LTS
+- Windows 11 Enterprise (evaluation)
+- Wireshark
+- Built-in Windows and Linux networking commands
