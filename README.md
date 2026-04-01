@@ -16,8 +16,8 @@ This repository tracks real lab work — not just notes. Each entry includes obj
 
 | # | Lab | Topics Covered | Date | Write-up |
 |---|-----|---------------|------|----------|
-| 01 | VirtualBox NAT and Bridged Networking | NAT vs Bridged adapter modes, IP addressing, directional ping behavior, MAC addresses, network isolation | March 2026 | [View](labs/Lab-01-VirtualBox-NAT-and-Bridged-Networking/README.md) |
-| 02 | VirtualBox NAT and Packet Flow | ARP, default routing, traceroute visibility, netstat, PID/service mapping, NAT/PAT translation | April 2026 | [View](labs/Lab-02-NAT-and-Packet-Flow/README.md) |
+| 01 | VirtualBox NAT and Bridged Networking | NAT vs Bridged adapter modes, IP addressing, directional ping behavior, MAC addresses, network isolation | March 2026 | [View](Labs/Lab-01-VirtualBox-NAT-and-Bridged-Networking/README.md) |
+| 02 | VirtualBox NAT and Packet Flow | ARP, default routing, traceroute visibility, netstat, PID/service mapping, NAT/PAT translation | April 2026 | [View](Labs/Lab-02-NAT-and-Packet-Flow/README.md) |
 
 ---
 
