@@ -1,4 +1,4 @@
-# Lab 02 — Wireshark Network Traffic Analysis
+# Lab 03 — Wireshark Network Traffic Analysis
 
 **Platform:** Oracle VirtualBox | Ubuntu 24.04 LTS VM  
 **Date:** March 2026  
