@@ -17,8 +17,9 @@ This repo documents a structured, hands-on learning journey targeting entry-leve
 | Lab | Topic | Platform | Status |
 |---|---|---|---|
 | [Lab 01 — VirtualBox NAT and Bridged Networking](Labs/Lab-01-VirtualBox-NAT-and-Bridged-Networking/) | VM networking modes, NAT vs Bridged behavior, host-to-guest reachability | VirtualBox / Ubuntu 24.04 | ✅ Complete |
-| [Lab 02 — Wireshark Network Traffic Analysis](Labs/Lab-02-Wireshark-Network-Traffic-Analysis/) | Live packet capture, DNS, ICMP, TCP handshakes, TLS/HTTPS analysis | VirtualBox / Ubuntu 24.04 | ✅ Complete |
-| [Lab 03 — Windows Firewall, Ports, and Reachability](Labs/Lab-03-Windows-Firewall-Ports-Reachability/) | Isolating listening state vs firewall policy vs end-to-end reachability | VirtualBox / Windows 11 Enterprise | ✅ Complete |
+| [Lab 02 — NAT and Packet Flow](Labs/Lab-02-NAT-and-Packet-Flow/) | ARP, routing tables, traceroute, netstat, PID mapping, NAT/PAT translation observed from both guest and host | VirtualBox / Windows 11 Enterprise | ✅ Complete |
+| [Lab 03 — Wireshark Network Traffic Analysis](Labs/Lab-03-Wireshark-Network-Traffic-Analysis/) | Live packet capture, DNS resolution, ICMP, TCP handshakes, TLS/HTTPS negotiation across OSI layers | VirtualBox / Ubuntu 24.04 | ✅ Complete |
+| [Lab 04 — Windows Firewall, Ports, and Reachability](Labs/Lab-04-Windows-Firewall-Ports-Reachability/) | Isolating listening state vs firewall policy vs end-to-end reachability across NAT and Bridged modes | VirtualBox / Windows 11 Enterprise | ✅ Complete |
 
 ---
 
