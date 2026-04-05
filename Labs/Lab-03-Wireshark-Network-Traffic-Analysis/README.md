@@ -1,26 +1,20 @@
-# Lab 03 — Windows Firewall, Ports, and Reachability
+# Lab 03 — Wireshark Network Traffic Analysis
 
-**Platform:** Oracle VirtualBox | Windows 11 Enterprise VM  
-**Date:** April 2026  
+**Platform:** Oracle VirtualBox | Ubuntu 24.04 LTS VM  
+**Date:** March 2026  
 **Author:** Dylan McDougal
 
 ---
 
 ## Key Takeaway
 
-> A port can be listening and explicitly allowed by Windows Firewall, yet still remain unreachable from another machine if the network path does not exist.
+> Normal traffic has a recognizable structure. DNS resolves before data flows, TCP handshakes precede every reliable connection, and TLS makes application data unreadable at the packet level — understanding that baseline is what makes abnormal traffic detectable.
 
 ---
 
 ## Objective
 
-This lab was designed to isolate and test three conditions that are frequently conflated in Windows networking troubleshooting:
-
-1. A service is **listening** on a port
-2. Windows Firewall **allows** inbound traffic to that port
-3. Another machine can **actually reach** the service over the network
-
-Each condition is necessary but not sufficient on its own. The goal was to prove that gap through controlled testing.
+Capture and analyze live network traffic using Wireshark inside an Ubuntu VM. The goal was to observe real packet-level activity across multiple OSI model layers — DNS resolution, ICMP ping behavior, TCP handshake sequences, and HTTPS/TLS negotiation — and build a baseline understanding of what normal traffic looks like in a controlled environment.
 
 ---
 
@@ -28,170 +22,173 @@ Each condition is necessary but not sufficient on its own. The goal was to prove
 
 | Component | Value |
 |---|---|
-| Guest OS | Windows 11 Enterprise (Evaluation) |
+| Guest OS | Ubuntu 24.04 LTS |
 | Virtualization Platform | Oracle VirtualBox |
-| Initial Adapter Mode | NAT |
-| NAT-mode Guest IP | 10.0.2.15 |
-| Later Adapter Mode | Bridged Adapter |
-| Bridged-mode Guest IP | 192.168.4.22 |
-| Test Port | TCP 8080 |
-| Built-in Ports Observed | 135 (RPC Endpoint Mapper), 139, 445 (SMB) |
+| Network Interface | enp0s3 (NAT adapter) |
+| Wireshark Version | 4.2.2 |
+| Additional Tools | Firefox, Linux Terminal |
+| Network Mode | NAT (10.0.2.15) |
 
 ---
 
 ## Lab Progression
 
-### Phase 1 — Baseline: What is the VM already listening on?
+### Phase 1 — Capture Setup
 
-Ran `netstat` to identify services in a LISTENING state and examined the difference between `0.0.0.0` (all interfaces) and `127.0.0.1` (loopback only).
-```powershell
-netstat -ano | findstr LISTENING
+Launched Wireshark and selected the `enp0s3` interface — Ubuntu's primary virtual ethernet adapter in NAT mode. Started a live capture before generating any traffic to ensure the full sequence of each protocol exchange would be captured from the start.
+
+```bash
+wireshark &
 ```
-TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       1084
-TCP    0.0.0.0:445            0.0.0.0:0              LISTENING       4
-TCP    0.0.0.0:5040           0.0.0.0:0              LISTENING       1272
-TCP    127.0.0.1:49669        0.0.0.0:0              LISTENING       4324
-Mapped PID 4 to confirm it was the System process (core Windows networking):
-```powershell
-tasklist /svc /FI "PID eq 4"
-```
-Image Name   PID   Services
-=========    ===   ========
-System       4     N/A
-Confirmed the guest IP via `ipconfig`:
-```powershell
-ipconfig
-```
-Ethernet adapter Ethernet:
-IPv4 Address. . . . . . . . . . . : 10.0.2.15
-Subnet Mask . . . . . . . . . . . : 255.255.255.0
-Default Gateway . . . . . . . . . : 10.0.2.2
-The `10.0.2.15` address is the standard VirtualBox NAT guest address. This is a private IP assigned internally by VirtualBox — the host has no direct route to it.
+
+Selected `enp0s3` from the interface list and began capture.
 
 ---
 
-### Phase 2 — Local vs. Remote Reachability in NAT Mode
+### Phase 2 — DNS Traffic
 
-Tested TCP 445 from inside the VM (loopback):
-```powershell
-Test-NetConnection -ComputerName 10.0.2.15 -Port 445
+Ran `ping google.com` from the terminal to trigger DNS resolution and ICMP traffic simultaneously.
+
+```bash
+ping -c 4 google.com
 ```
-ComputerName     : 10.0.2.15
-RemoteAddress    : 10.0.2.15
-RemotePort       : 445
-TcpTestSucceeded : True
-Tested the same port from the host — result was **failure**. This confirmed the critical distinction: **listening does not equal remote reachability.**
+
+```
+PING google.com (173.194.219.100) 56(84) bytes of data.
+64 bytes from 173.194.219.100: icmp_seq=1 ttl=255 time=14.3 ms
+64 bytes from 173.194.219.100: icmp_seq=2 ttl=255 time=13.8 ms
+64 bytes from 173.194.219.100: icmp_seq=3 ttl=255 time=14.1 ms
+64 bytes from 173.194.219.100: icmp_seq=4 ttl=255 time=13.9 ms
+```
+
+Wireshark captured DNS query packets before any ICMP traffic appeared — confirming that name resolution must complete before the ping can send. The VM sent a standard query to the DNS server at `10.0.2.3`, which responded with `173.194.219.100` for `google.com`.
+
+Confirmed the same resolution behavior with `nslookup`:
+
+```bash
+nslookup github.com
+```
+
+```
+Server:         127.0.0.53
+Address:        127.0.0.53#53
+
+Non-authoritative answer:
+Name:   github.com
+Address: 140.82.113.4
+```
+
+DNS operates at Layer 7 and uses UDP at Layer 4 — both visible in Wireshark's protocol column.
 
 ---
 
-### Phase 3 — Custom Listener on TCP 8080
+### Phase 3 — ICMP Traffic
 
-Created a PowerShell TCP listener on port 8080 to eliminate SMB-specific variables and test with a clean, controlled service:
-```powershell
-$l = [System.Net.Sockets.TcpListener]::new([Net.IPAddress]::Any, 8080)
-$l.Start()
+Applied a Wireshark display filter to isolate ping traffic:
+
+```
+icmp
 ```
 
-Confirmed the listener was bound to all interfaces, not loopback:
-```powershell
-netstat -ano | findstr :8080
-```
-TCP    0.0.0.0:8080           0.0.0.0:0              LISTENING       9804
-Local test from inside the VM — **succeeded.**  
-Host test with VM still in NAT mode — **failed.**
+Alternating Echo Request and Echo Reply packets were visible between `10.0.2.15` (VM) and `173.194.219.100` (Google). Four requests and four replies matched the `-c 4` flag used in the ping command.
+
+TTL values observed:
+- VM outbound packets: TTL 64 (standard Linux default)
+- Google responses: TTL 255 (consistent with network infrastructure)
+
+ICMP operates at Layer 3 and carries no port numbers — distinguishing it from TCP and UDP traffic.
 
 ---
 
-### Phase 4 — Firewall Rule Test (NAT Mode)
+### Phase 4 — TCP Three-Way Handshake
 
-Checked for an existing allow rule on TCP 8080 — none found. Created one:
-```powershell
-New-NetFirewallRule -DisplayName "Allow TCP 8080 Lab" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
+Applied a Wireshark filter to isolate SYN packets:
+
+```
+tcp.flags.syn == 1
 ```
 
-Retested from the host with the firewall rule in place — **still failed.**
+Multiple TCP handshake sequences were visible. Each connection followed the expected pattern:
 
-This isolated the root cause: the firewall was not the primary blocker. The network path from the host to the NAT guest simply did not exist.
+1. **SYN** — VM sends connection request from a high ephemeral port to destination port 443
+2. **SYN-ACK** — Remote server acknowledges and responds
+3. **ACK** — VM confirms, connection established
 
-Removed the temporary rule and confirmed host-to-guest failure was unchanged — consistent with that conclusion.
+This sequence repeated for every new HTTPS connection during the Firefox browsing session, confirming that TCP establishes a reliable path before any application data is transmitted.
 
 ---
 
-### Phase 5 — Network Mode Change: NAT → Bridged Adapter
+### Phase 5 — HTTPS and TLS Negotiation
 
-Changed the VM adapter from NAT to Bridged. After reboot, the guest received a LAN-facing address:
-```powershell
-ipconfig
+Applied a filter for HTTPS traffic:
+
 ```
-Ethernet adapter Ethernet:
-IPv4 Address. . . . . . . . . . . : 192.168.4.22
-Subnet Mask . . . . . . . . . . . : 255.255.255.0
-Default Gateway . . . . . . . . . : 192.168.4.1
-Recreated the 8080 listener and retested from the host:
-```powershell
-Test-NetConnection -ComputerName 192.168.4.22 -Port 8080
+tcp.port == 443
 ```
-ComputerName     : 192.168.4.22
-RemoteAddress    : 192.168.4.22
-RemotePort       : 8080
-TcpTestSucceeded : True
-**Succeeded.** Same service, same port, same firewall state. The only change was the network topology.
+
+Following each TCP handshake, TLS negotiation packets were visible in sequence:
+
+- Client Hello
+- Server Hello
+- Certificate
+- Server Key Exchange
+- Client Key Exchange
+
+Remote servers observed included Google (`34.160.144.191`) and Cloudflare infrastructure (`151.101.113.91`) serving GitHub content. After TLS negotiation completed, all subsequent data was encrypted and unreadable in the capture — the expected and correct behavior of HTTPS.
 
 ---
 
-## Results by Test Condition
+### Phase 6 — OSI Layer Inspection in a Single Packet
 
-| Condition | Listener State | Firewall State | Host Reachability |
-|---|---|---|---|
-| NAT mode, no firewall rule | Listening on 0.0.0.0:8080 | No rule for 8080 | **Failed** |
-| NAT mode, with firewall rule | Listening on 0.0.0.0:8080 | Allow rule created | **Still failed** |
-| NAT mode, rule removed | Listening on 0.0.0.0:8080 | Rule removed | **Still failed** |
-| Bridged mode | Listening on 0.0.0.0:8080 | No special rule | **Succeeded** |
+Clicked into individual packets to examine the full layer stack in Wireshark's detail panel. A single captured packet revealed all layers represented simultaneously:
+
+| Layer | What Was Visible |
+|---|---|
+| Layer 2 — Data Link | Ethernet II frame with source and destination MAC addresses |
+| Layer 3 — Network | IPv4 header with source/destination IP addresses and TTL |
+| Layer 4 — Transport | TCP header with port numbers, sequence numbers, and flags |
+| Layer 7 — Application | Protocol identifier (DNS, TLS, HTTP) |
+
+---
+
+## OSI Layers Observed
+
+| Layer | Evidence in Capture |
+|---|---|
+| Layer 7 — Application | DNS queries and responses, HTTPS protocol activity |
+| Layer 6 — Presentation | TLS Client Hello, Server Hello, Certificate exchange |
+| Layer 4 — Transport | TCP SYN, SYN-ACK, ACK sequences on port 443; UDP on port 53 |
+| Layer 3 — Network | IP addresses in all packets, ICMP ping traffic, TTL values |
+| Layer 2 — Data Link | Ethernet II MAC addresses in packet detail panel |
 
 ---
 
 ## Analysis
 
-The decisive variable was network topology, not service state or firewall policy.
+DNS resolution consistently preceded ICMP and TCP traffic in every test — confirming that name resolution is a dependency, not a parallel process. An analyst looking at a host's traffic should expect to see DNS queries before outbound connections; their absence or unusual destination can indicate hardcoded IPs or DNS tunneling.
 
-In NAT mode, the guest's `10.0.2.15` address is a VirtualBox-internal address. The host has no direct route to it. Inbound connections from the host to the guest are blocked at the virtualization layer — adding a Windows Firewall allow rule does not fix a missing network path. Those are two separate decision points in the traffic flow.
+The TCP handshake sequences were uniform and predictable across all HTTPS connections. Deviations from that pattern — incomplete handshakes, unexpected SYN floods, or RST packets — are the kind of anomalies that generate IDS alerts and require triage.
 
-After switching to Bridged Adapter mode, the guest joined the same LAN as the host (`192.168.4.22`). The host now had a direct path. No additional firewall changes were required — the listener and the existing default policy were already sufficient once the path existed.
-
-This pattern reflects a common real-world troubleshooting failure: engineers confirm a service is running and a firewall rule exists, then escalate when the service is still unreachable, without checking whether a valid network path actually exists between source and destination.
-
----
-
-## Key Concepts Reinforced
-
-- **Listening is a host-local condition.** It tells you the service is running, not that it is externally accessible.
-- **Firewall policy is one decision point, not the whole path.** A packet can pass firewall inspection and still fail if the routing or network topology doesn't support the connection.
-- **Reachability requires the full stack:** valid addressing, correct topology, a listening service, and any required policy allowance — all four.
-- **NAT and Bridged networking are fundamentally different** for host-to-guest inbound testing. NAT hides the guest behind a translated address with no inbound path by default.
-- **Controlled variable isolation** — changing one thing at a time — is what makes root cause identification reliable rather than accidental.
+TLS negotiation made all HTTPS payload data unreadable at the packet level, which is the correct behavior. However, the metadata remained visible: server IPs, timing, packet volume, and certificate exchange details. Traffic analysis at this level can identify suspicious destinations even when payload content is encrypted.
 
 ---
 
 ## SOC and Blue Team Relevance
 
-This troubleshooting model — *Is it listening? Is policy allowing it? Is the path actually there?* — is the same sequence a SOC analyst works through when triaging connectivity-based alerts or investigating suspected lateral movement.
+Establishing a baseline of normal traffic behavior is a prerequisite for identifying abnormal traffic. This lab documented what that baseline looks like in practice: DNS before data, handshake before payload, TLS making application data opaque while metadata remains visible.
 
-A port scan showing TCP 445 or 3389 as open on an internal host means the service responded. It does not tell you whether that host is legitimately reachable from the segment the scan originated from, whether a firewall policy should have blocked it, or whether the path exists because of a misconfiguration. This lab's methodology — isolating service state, firewall state, and network path independently — is directly applicable to that kind of investigation.
-
-Understanding why a connection succeeds or fails at each layer is also foundational to reading firewall logs, IDS alerts, and SIEM events accurately. An alert that fires on an attempted connection to TCP 8080 carries different weight depending on whether the host is NAT-isolated or directly LAN-accessible.
+In a SOC context, Wireshark is used for deep packet inspection during incident response — examining specific hosts or sessions flagged by a SIEM or IDS alert. The filters used here (`icmp`, `tcp.flags.syn == 1`, `tcp.port == 443`) are the same building blocks used to isolate suspicious traffic during an investigation. The ability to read a packet capture and distinguish expected protocol behavior from anomalous behavior is a direct analyst skill.
 
 ---
 
-## Commands Reference
+## Filters Used
 
-| Command | Purpose |
+| Filter | Purpose |
 |---|---|
-| `netstat -ano \| findstr LISTENING` | Show all listening ports with owning PIDs |
-| `tasklist /svc /FI "PID eq 4"` | Map a PID to its associated service or process name |
-| `ipconfig` | Confirm IP address and adapter configuration |
-| `Test-NetConnection -ComputerName <IP> -Port <Port>` | Test TCP reachability to a specific host and port |
-| `$l = [System.Net.Sockets.TcpListener]::new(...)` | Create a custom PowerShell TCP listener for testing |
-| `New-NetFirewallRule ...` | Create an inbound Windows Firewall allow rule |
+| `icmp` | Isolate ping request and reply traffic |
+| `tcp.flags.syn == 1` | Show only TCP SYN packets to view handshake initiations |
+| `tcp.port == 443` | Filter for HTTPS traffic |
+| `dns` | Isolate DNS query and response packets |
 
 ---
 
